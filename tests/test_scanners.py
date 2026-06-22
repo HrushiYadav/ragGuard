@@ -3,11 +3,16 @@ from pathlib import Path
 import pytest
 
 from ragguard.scanners.auth_gaps import AuthGapsScanner
+from ragguard.scanners.command_injection import CommandInjectionScanner
 from ragguard.scanners.filter_injection import FilterInjectionScanner
+from ragguard.scanners.hardcoded_secrets import HardcodedSecretsScanner
+from ragguard.scanners.insecure_deserialization import InsecureDeserializationScanner
+from ragguard.scanners.insecure_tls import InsecureTLSScanner
 from ragguard.scanners.nosql_injection import NoSQLInjectionScanner
 from ragguard.scanners.resource_safety import ResourceSafetyScanner
 from ragguard.scanners.secret_logging import SecretLoggingScanner
 from ragguard.scanners.sql_injection import SQLInjectionScanner
+from ragguard.scanners.ssrf import SSRFScanner
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -87,3 +92,45 @@ class TestResourceSafety:
         categories = {f.code_snippet for f in findings}
         assert any("pickle" in s for s in categories)
         assert any("zipfile" in s or "ZipFile" in s for s in categories)
+
+
+class TestHardcodedSecrets:
+    def test_detects_hardcoded_keys(self):
+        content, lines = _load("vuln_secrets_hardcoded.py")
+        findings = HardcodedSecretsScanner().scan_file("vuln_secrets_hardcoded.py", content, lines)
+        assert len(findings) >= 2
+        assert all(f.severity == "HIGH" for f in findings)
+        assert any("sk-" in f.code_snippet or "AKIA" in f.code_snippet for f in findings)
+
+
+class TestSSRF:
+    def test_detects_fstring_urls(self):
+        content, lines = _load("vuln_ssrf.py")
+        findings = SSRFScanner().scan_file("vuln_ssrf.py", content, lines)
+        assert len(findings) >= 1
+        assert all(f.category == "ssrf" for f in findings)
+
+
+class TestInsecureDeserialization:
+    def test_detects_yaml_load(self):
+        content, lines = _load("vuln_deserialization.py")
+        findings = InsecureDeserializationScanner().scan_file("vuln_deserialization.py", content, lines)
+        assert len(findings) >= 2
+        assert any("yaml" in f.code_snippet for f in findings)
+
+
+class TestCommandInjection:
+    def test_detects_os_system_and_shell_true(self):
+        content, lines = _load("vuln_command_injection.py")
+        findings = CommandInjectionScanner().scan_file("vuln_command_injection.py", content, lines)
+        assert len(findings) >= 2
+        assert any("os.system" in f.code_snippet for f in findings)
+        assert any("shell=True" in f.code_snippet or "subprocess" in f.code_snippet for f in findings)
+
+
+class TestInsecureTLS:
+    def test_detects_verify_false_and_unverified_context(self):
+        content, lines = _load("vuln_tls.py")
+        findings = InsecureTLSScanner().scan_file("vuln_tls.py", content, lines)
+        assert len(findings) >= 2
+        assert any("verify" in f.code_snippet.lower() for f in findings)
