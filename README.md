@@ -1,8 +1,12 @@
 # RAGGuard
 
-Static security scanner for RAG pipelines. Finds injection vulnerabilities, secret logging, auth gaps, and resource safety issues in Python codebases.
+Static security scanner for RAG pipelines. Finds injection vulnerabilities, hardcoded secrets, auth gaps, and more in Python codebases.
 
 Built from real-world security audits of production RAG frameworks.
+
+[![PyPI](https://img.shields.io/pypi/v/ragsec)](https://pypi.org/project/ragsec/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/pypi/pyversions/ragsec)](https://pypi.org/project/ragsec/)
 
 ## Install
 
@@ -35,14 +39,21 @@ ragguard scan ./path/to/codebase --category filter-injection
 
 ## What it detects
 
-| Scanner | Severity | What it finds |
-|---------|----------|---------------|
-| Filter Injection | HIGH | f-string interpolation in Milvus, Valkey, Azure, Elasticsearch filter expressions |
-| NoSQL Injection | HIGH | Unvalidated dict values in MongoDB/Elasticsearch queries |
-| SQL Injection | HIGH | f-string SQL construction (INSERT, DELETE, SELECT, UPDATE) |
-| Secret Logging | MEDIUM | API keys, passwords, connection strings in logger calls |
-| Auth Gaps | MEDIUM | FastAPI/Flask routes without auth, client-controlled user IDs (IDOR) |
-| Resource Safety | HIGH/MEDIUM/LOW | pickle deserialization, zip bombs, eval/exec, unbounded reads |
+11 scanners covering the most common vulnerability patterns in RAG/LLM codebases:
+
+| Scanner | Severity | CWE | What it finds |
+|---------|----------|-----|---------------|
+| Filter Injection | HIGH | CWE-94 | f-string interpolation in Milvus, Valkey, Azure, Elasticsearch filter expressions |
+| NoSQL Injection | HIGH | CWE-943 | Unvalidated dict values in MongoDB/Elasticsearch queries |
+| SQL Injection | HIGH | CWE-89 | f-string SQL construction (INSERT, DELETE, SELECT, UPDATE) |
+| Hardcoded Secrets | HIGH | CWE-798 | API keys (OpenAI, AWS, GitHub, GitLab, Slack), hardcoded passwords |
+| SSRF | HIGH | CWE-918 | User-controlled URLs in requests, httpx, aiohttp, urllib |
+| Insecure Deserialization | HIGH | CWE-502 | yaml.load without SafeLoader, marshal, jsonpickle, shelve |
+| Command Injection | HIGH | CWE-78 | os.system/popen with f-strings, subprocess with shell=True |
+| Secret Logging | MEDIUM | CWE-532 | API keys, passwords, connection strings in logger calls |
+| Auth Gaps | MEDIUM | CWE-862 | FastAPI/Flask routes without auth, client-controlled user IDs (IDOR) |
+| Insecure TLS | MEDIUM | CWE-295 | verify=False, disabled certificate validation, cleartext HTTP |
+| Resource Safety | LOW-HIGH | CWE-502 | pickle deserialization, zip bombs, eval/exec, unbounded reads |
 
 ## Example output
 
@@ -57,14 +68,18 @@ RG-002 [HIGH] NoSQL injection: Filter value passed into query
   vector_stores/mongo.py:89
   > filter_dict["payload." + key] = value
 
+RG-003 [HIGH] Hardcoded secret: OpenAI API key
+  config.py:12
+  > OPENAI_KEY = "sk-proj-abc123..."
+
       Summary
 +------------------+
 | Severity | Count |
 |----------+-------|
-| HIGH     |     5 |
+| HIGH     |    12 |
 | MEDIUM   |     8 |
-| LOW      |     3 |
-| Total    |    16 |
+| LOW      |     5 |
+| Total    |    25 |
 +------------------+
 ```
 
@@ -86,6 +101,8 @@ pytest tests/ -v
 ruff check ragguard/
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on adding new scanners.
+
 ## License
 
-Apache-2.0
+[Apache-2.0](LICENSE)
