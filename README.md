@@ -7,7 +7,7 @@ Built from real-world security audits of production RAG frameworks.
 ## Install
 
 ```bash
-pip install ragguard
+pip install ragsec
 ```
 
 Or from source:
