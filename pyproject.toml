@@ -10,18 +10,24 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [{ name = "Hrushikesh Yadav", email = "yadavhrushikesh65@gmail.com" }]
-keywords = ["rag", "security", "scanner", "vector-store", "static-analysis"]
+keywords = ["rag", "security", "scanner", "vector-store", "static-analysis", "llm", "vulnerability", "sast"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Topic :: Security",
     "Topic :: Software Development :: Quality Assurance",
+    "Programming Language :: Python :: 3",
 ]
 dependencies = [
     "click>=8.0",
     "jinja2>=3.0",
     "rich>=13.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/HrushiYadav/ragGuard"
+Repository = "https://github.com/HrushiYadav/ragGuard"
+Issues = "https://github.com/HrushiYadav/ragGuard/issues"
 
 [project.scripts]
 ragguard = "ragguard.cli:main"
