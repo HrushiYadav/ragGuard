@@ -1,21 +1,50 @@
+import ast
 import re
 
 from ragguard.finding import Finding
 from ragguard.scanners.base import BaseScanner
 
-# FastAPI route decorators
-_ROUTE_DECORATOR = re.compile(r"@\w+\.(get|post|put|delete|patch)\(")
+_ROUTE_METHODS = {"get", "post", "put", "delete", "patch"}
 
-# Auth-related patterns that indicate authorization is present
-_AUTH_PATTERNS = re.compile(
-    r"Depends\(.*auth|Depends\(.*verify|Depends\(.*current_user"
-    r"|Security\(|HTTPBearer|OAuth2|api_key.*Header"
-    r"|@require_auth|@login_required|@authenticated",
+_AUTH_KEYWORDS = re.compile(
+    r"auth|verify|current_user|Security|HTTPBearer|OAuth2|api_key|require_auth|login_required|authenticated",
     re.IGNORECASE,
 )
 
-# Client-controlled ID in request body (IDOR risk)
 _IDOR_PATTERN = re.compile(r"(?:body|request|payload|data)\.\w*(?:user_id|org_id|tenant_id)")
+
+
+def _is_route_decorator(node: ast.expr) -> bool:
+    if isinstance(node, ast.Call):
+        node = node.func
+    if isinstance(node, ast.Attribute) and node.attr in _ROUTE_METHODS:
+        return True
+    return False
+
+
+def _decorator_source(node: ast.expr) -> str:
+    return ast.dump(node)
+
+
+def _has_auth_in_decorators(decorators: list[ast.expr]) -> bool:
+    for dec in decorators:
+        source = _decorator_source(dec)
+        if _AUTH_KEYWORDS.search(source):
+            return True
+    return False
+
+
+def _has_auth_in_args(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    for arg in func_node.args.args:
+        if arg.annotation and _AUTH_KEYWORDS.search(ast.dump(arg.annotation)):
+            return True
+    for default in func_node.args.defaults:
+        if _AUTH_KEYWORDS.search(ast.dump(default)):
+            return True
+    for default in func_node.args.kw_defaults:
+        if default and _AUTH_KEYWORDS.search(ast.dump(default)):
+            return True
+    return False
 
 
 class AuthGapsScanner(BaseScanner):
@@ -31,18 +60,29 @@ class AuthGapsScanner(BaseScanner):
         if "test" in file_path.replace("\\", "/").split("/")[-1].lower():
             return []
 
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            return []
+
         findings = []
 
-        # Check for FastAPI routes without auth
-        has_any_auth = bool(_AUTH_PATTERNS.search(content))
-        route_lines = []
-        for i, line in enumerate(lines, 1):
-            stripped = line.strip()
-            if _ROUTE_DECORATOR.search(stripped) and not stripped.startswith("@mock"):
-                route_lines.append((i, stripped))
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
 
-        if route_lines and not has_any_auth:
-            for line_num, snippet in route_lines:
+            route_decorator = None
+            for dec in node.decorator_list:
+                if _is_route_decorator(dec):
+                    route_decorator = dec
+                    break
+
+            if route_decorator is None:
+                continue
+
+            if not _has_auth_in_decorators(node.decorator_list) and not _has_auth_in_args(node):
+                line_num = route_decorator.lineno
+                snippet = lines[line_num - 1].strip() if line_num <= len(lines) else ""
                 findings.append(Finding(
                     id="",
                     severity="MEDIUM",
@@ -51,12 +91,14 @@ class AuthGapsScanner(BaseScanner):
                     file_path=file_path,
                     line_number=line_num,
                     code_snippet=snippet,
-                    description="This API endpoint has no visible authentication dependency. Any caller can access it.",
-                    remediation="Add authentication middleware (e.g., Depends(verify_token)) to protect this endpoint.",
+                    description="This API endpoint has no visible authentication dependency. "
+                    "Any caller can access it.",
+                    remediation="Add authentication middleware "
+                    "(e.g., Depends(verify_token)) to protect this endpoint.",
                     cwe_id="CWE-306",
                 ))
 
-        # Check for client-controlled user_id (IDOR)
+        # IDOR check stays regex-based (per-line)
         for i, line in enumerate(lines, 1):
             stripped = line.strip()
             if _IDOR_PATTERN.search(stripped):
@@ -70,7 +112,8 @@ class AuthGapsScanner(BaseScanner):
                     code_snippet=stripped,
                     description="User/tenant ID is taken from the request body, "
                     "allowing clients to impersonate other users.",
-                    remediation="Derive user_id from the authenticated session/token, not from the request body.",
+                    remediation="Derive user_id from the authenticated session/token, "
+                    "not from the request body.",
                     cwe_id="CWE-639",
                 ))
 

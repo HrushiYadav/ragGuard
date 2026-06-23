@@ -28,14 +28,6 @@ _PATTERNS = [
         "CWE-409",
         "MEDIUM",
     ),
-    # file.read() without size limit (in upload/import contexts)
-    (
-        re.compile(r"\.read\(\s*\)"),
-        "Unbounded file read (no size limit)",
-        "Pass a max size argument to .read(max_bytes) to prevent memory exhaustion.",
-        "CWE-400",
-        "LOW",
-    ),
     # eval() or exec() calls
     (
         re.compile(r"(?<!\.)\beval\s*\(|(?<!\.)\bexec\s*\("),
@@ -57,6 +49,9 @@ class ResourceSafetyScanner(BaseScanner):
         return "resource-safety"
 
     def scan_file(self, file_path: str, content: str, lines: list[str]) -> list[Finding]:
+        if "test" in file_path.replace("\\", "/").split("/")[-1].lower():
+            return []
+
         findings = []
         for i, line in enumerate(lines, 1):
             stripped = line.strip()

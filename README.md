@@ -51,9 +51,9 @@ ragguard scan ./path/to/codebase --category filter-injection
 | Insecure Deserialization | HIGH | CWE-502 | yaml.load without SafeLoader, marshal, jsonpickle, shelve |
 | Command Injection | HIGH | CWE-78 | os.system/popen with f-strings, subprocess with shell=True |
 | Secret Logging | MEDIUM | CWE-532 | API keys, passwords, connection strings in logger calls |
-| Auth Gaps | MEDIUM | CWE-862 | FastAPI/Flask routes without auth, client-controlled user IDs (IDOR) |
+| Auth Gaps | MEDIUM | CWE-306 | FastAPI/Flask routes without auth (AST-based), client-controlled user IDs (IDOR) |
 | Insecure TLS | MEDIUM | CWE-295 | verify=False, disabled certificate validation, cleartext HTTP |
-| Resource Safety | LOW-HIGH | CWE-502 | pickle deserialization, zip bombs, eval/exec, unbounded reads |
+| Resource Safety | MEDIUM-HIGH | CWE-502 | pickle deserialization, zip bombs, tar extraction, eval/exec |
 
 ## Example output
 

@@ -71,7 +71,7 @@ class FilterInjectionScanner(BaseScanner):
                         code_snippet=stripped,
                         description=desc,
                         remediation=remediation,
-                        cwe_id="CWE-943",
+                        cwe_id="CWE-94",
                     ))
                     break
         return findings

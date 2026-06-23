@@ -83,6 +83,12 @@ class TestAuthGaps:
         findings = AuthGapsScanner().scan_file("vuln_auth.py", content, lines)
         assert any("IDOR" in f.title or "user" in f.title.lower() for f in findings)
 
+    def test_no_findings_on_authenticated_routes(self):
+        content, lines = _load("safe_auth.py")
+        findings = AuthGapsScanner().scan_file("safe_auth.py", content, lines)
+        route_findings = [f for f in findings if "route" in f.title.lower() or "auth" in f.title.lower()]
+        assert route_findings == []
+
 
 class TestResourceSafety:
     def test_detects_pickle_and_zipfile(self):
@@ -110,6 +116,11 @@ class TestSSRF:
         assert len(findings) >= 1
         assert all(f.category == "ssrf" for f in findings)
 
+    def test_no_findings_on_safe_ssrf(self):
+        content, lines = _load("safe_ssrf.py")
+        findings = SSRFScanner().scan_file("safe_ssrf.py", content, lines)
+        assert findings == []
+
 
 class TestInsecureDeserialization:
     def test_detects_yaml_load(self):
@@ -126,6 +137,13 @@ class TestCommandInjection:
         assert len(findings) >= 2
         assert any("os.system" in f.code_snippet for f in findings)
         assert any("shell=True" in f.code_snippet or "subprocess" in f.code_snippet for f in findings)
+
+
+class TestResourceSafetySafe:
+    def test_no_findings_on_safe_resource_operations(self):
+        content, lines = _load("safe_resource.py")
+        findings = ResourceSafetyScanner().scan_file("safe_resource.py", content, lines)
+        assert findings == []
 
 
 class TestInsecureTLS:
