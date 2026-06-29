@@ -31,6 +31,7 @@ ragguard scan ./path/to/codebase
 # Generate reports
 ragguard scan ./path/to/codebase --output report.md --format markdown
 ragguard scan ./path/to/codebase --output report.html --format html
+ragguard scan ./path/to/codebase --output report.sarif --format sarif
 
 # Filter by severity or category
 ragguard scan ./path/to/codebase --severity high
@@ -92,6 +93,39 @@ ragguard scan ./my-rag-app --output report.html --format html
 ```
 
 Dark theme with severity badges, code snippets, and remediation guidance.
+
+## SARIF Output
+
+For CI/CD integration and GitHub Code Scanning:
+
+```bash
+ragguard scan ./my-rag-app --output report.sarif --format sarif
+```
+
+## Configuration
+
+Create `ragguard.toml` (or `.ragguard.toml`) in your project root:
+
+```toml
+[ragguard]
+ignore_paths = ["tests/", "migrations/"]
+disable_scanners = ["secret-logging"]
+min_severity = "MEDIUM"
+```
+
+| Option | Description |
+|--------|-------------|
+| `ignore_paths` | Path substrings to skip |
+| `disable_scanners` | Scanner categories to disable |
+| `min_severity` | Minimum severity to report (`HIGH`, `MEDIUM`, `LOW`) |
+
+## Inline Suppression
+
+Suppress a specific finding with an inline comment:
+
+```python
+api_key = os.environ.get("OPENAI_KEY", "sk-hardcoded")  # ragguard: ignore
+```
 
 ## Development
 
