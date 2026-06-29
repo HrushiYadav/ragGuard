@@ -135,7 +135,7 @@ pytest tests/ -v
 ruff check ragguard/
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details on adding new scanners.
+See [CONTRIBUTING.md](https://github.com/HrushiYadav/ragGuard/blob/main/CONTRIBUTING.md) for details on adding new scanners.
 
 ## License
 
